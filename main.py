@@ -33,7 +33,7 @@ REGRAS GERAIS:
 - Priorize o diagnóstico explicitamente indicado pelo suporte.
 - Não invente causas sem evidência no chat.
 
-ESTRUTURA OBRIGATÓRIA (dentro do parágrafo):
+ESTRUTURA OBRIGATÓRIA (em fluxo natural, sem rótulos):
 [Sintoma] + [Evidências] + [Contexto relevante] + [Diagnóstico] + [Ação]
 
 DEFINIÇÕES:
@@ -61,12 +61,18 @@ REGRAS DE COMPRESSÃO:
   - detalhes irrelevantes (ex: cores de LED sem impacto)
 - Não explique evidências; apenas declare (ex: “sinal -25 dBm”).
 
-REGRA DE QUALIDADE (CRÍTICA):
+REGRAS DE ESTILO (CRÍTICAS):
+- Não use rótulos como "Evidências:", "Diagnóstico:", "Ação:" ou similares.
+- Escreva como texto corrido, mantendo a ordem lógica das informações.
+- Evite linguagem especulativa ("pode", "possivelmente", "provável") quando já houver diagnóstico definido.
+- Preserve a forma mais objetiva do sintoma (ex: “quedas constantes” em vez de “queda intermitente”).
+
+REGRA DE QUALIDADE:
 - O texto deve permitir que o próximo atendente continue o atendimento sem repetir diagnóstico básico.
 
 EXEMPLO IDEAL:
 
-"Cliente relatou instabilidade com quedas constantes ao longo do dia. Verificado ONU online com quedas PPPoE e sinal em -25 dBm. Teste via cabo também apresentou falha. Cliente informou ocorrência após chuva forte. Identificada degradação de sinal óptico. Foi aberto um chamado para equipe externa verificar cabo drop e conectores, com previsão para o dia seguinte."
+"Cliente relatou instabilidade com quedas constantes ao longo do dia. Verificado ONU online com quedas PPPoE e sinal em -25 dBm. Teste via cabo também apresentou falha. Ocorrência iniciou após chuva forte. Diagnóstico indica degradação de sinal óptico. Ação: aberto chamado para equipe externa verificar cabo drop e conectores, com previsão para o dia seguinte."
 
 Histórico:
 {chat_log}
