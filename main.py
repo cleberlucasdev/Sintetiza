@@ -19,52 +19,59 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
-REPORT_PROMPT = """Você é um analista técnico de ISP especializado em diagnóstico de falhas FTTH.
+REPORT_PROMPT = """Você é um analista técnico de ISP especializado em registrar ocorrências de atendimento FTTH para continuidade operacional.
 
-Analise o histórico e gere um relatório técnico em UM ÚNICO PARÁGRAFO.
+Tarefa: analisar o histórico do chat e gerar um LOG DE OCORRÊNCIA em UM ÚNICO PARÁGRAFO, conciso e útil para o próximo atendente.
 
-REGRAS:
+OBJETIVO:
+Permitir que outro atendente entenda rapidamente o que ocorreu, quais evidências foram coletadas, qual diagnóstico foi assumido e qual ação já foi tomada, evitando retrabalho.
 
+REGRAS GERAIS:
 - Não narre o atendimento. Extraia apenas informação útil.
-- Sempre identifique a CAUSA MAIS PROVÁVEL (obrigatório).
-- Se houver causas secundárias, mencione brevemente.
-- Inclua OBRIGATORIAMENTE pelo menos 2 evidências objetivas quando disponíveis (ex: teste via cabo, nível de sinal, quedas PPPoE).
-- Não use linguagem vaga ("pode ser") sem priorização.
-- Seja direto, técnico e curto.
+- Use linguagem técnica, direta e concisa.
+- Não mencione nomes, horários, CPF, cumprimentos ou menus.
+- Priorize o diagnóstico explicitamente indicado pelo suporte.
+- Não invente causas sem evidência no chat.
 
-ESTRUTURA (dentro do parágrafo):
+ESTRUTURA OBRIGATÓRIA (dentro do parágrafo):
+[Sintoma] + [Evidências] + [Contexto relevante] + [Diagnóstico] + [Ação]
 
-[Sintoma] + [Evidências] + [Diagnóstico principal] + [Ação tomada]
+DEFINIÇÕES:
+- Sintoma: problema relatado pelo cliente (ex: instabilidade, sem sinal).
+- Evidências: dados objetivos (ex: teste via cabo, quedas PPPoE, nível de sinal).
+- Contexto relevante: apenas o que ajuda próximos atendimentos (ex: chuva, recorrência, múltiplos clientes afetados).
+- Diagnóstico: causa mais provável definida pelo suporte.
+- Ação: o que foi feito (ex: ajuste remoto, agendamento, abertura de chamado).
+
+REGRAS DE FILTRAGEM:
+- Inclua OBRIGATORIAMENTE pelo menos 2 evidências objetivas quando disponíveis.
+- Se teste via cabo também falhar → não descartar rede interna automaticamente.
+- Se múltiplos clientes afetados → priorizar rede externa.
+- Se sinal <= -25 dBm → considerar degradação física.
+- Se houver quedas PPPoE → indicar instabilidade de link.
 
 REGRAS DE COMPRESSÃO:
-
-- Máximo de 4 frases.
-- Máximo de 80 palavras.
-- O relatório deve ser o menor possível sem perder capacidade de decisão técnica.
-- Inclua apenas informações que impactam o diagnóstico ou a ação.
-- Remova detalhes de frequência, quantidade ou contexto que não alterem a causa ou a ação.
-- Descarte completamente:
+- Máximo de 5 frases.
+- Máximo de 90 palavras.
+- Inclua apenas informações que impactam diagnóstico ou continuidade.
+- Remova:
   - cumprimentos
   - repetições
   - perguntas intermediárias
-  - confirmações sem valor técnico
-- Não explique evidências; apenas declare (ex: “sinal -26 dBm”).
+  - detalhes irrelevantes (ex: cores de LED sem impacto)
+- Não explique evidências; apenas declare (ex: “sinal -25 dBm”).
 
-REGRAS TÉCNICAS:
-
-- Se cabo estável → Wi-Fi não é causa principal.
-- Se sinal <= -25 dBm → priorizar problema físico.
-- Quedas PPPoE → indicar instabilidade de link.
+REGRA DE QUALIDADE (CRÍTICA):
+- O texto deve permitir que o próximo atendente continue o atendimento sem repetir diagnóstico básico.
 
 EXEMPLO IDEAL:
 
-"Cliente relatou instabilidade com quedas frequentes. Verificado ONU online com quedas PPPoE e sinal em -26 dBm. Teste via cabo estável descarta rede interna. Diagnóstico: degradação de sinal óptico como causa principal, com possível influência de roteador próprio. Ação: ajuste remoto e agendamento de visita técnica para validação do cabo drop e conectores."
+"Cliente relatou instabilidade com quedas constantes ao longo do dia. Verificado ONU online com quedas PPPoE e sinal em -25 dBm. Teste via cabo também apresentou falha. Cliente informou ocorrência após chuva forte. Identificada degradação de sinal óptico. Foi aberto um chamado para equipe externa verificar cabo drop e conectores, com previsão para o dia seguinte."
 
 Histórico:
 {chat_log}
 
-Relatório:"""
-
+Log de ocorrência:"""
 
 class ReportRequest(BaseModel):
     chat_log: str
