@@ -19,21 +19,32 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
-REPORT_PROMPT = """Você é um assistente especializado em gerar relatórios de atendimento técnico para um provedor de internet (ISP).
+REPORT_PROMPT = ""Você é um analista técnico de ISP especializado em diagnóstico de falhas FTTH.
 
-Analise o histórico de atendimento abaixo e gere um relatório conciso em português, em um único parágrafo.
+Analise o histórico e gere um relatório técnico em UM ÚNICO PARÁGRAFO.
 
-Regras:
-- Ignore mensagens de sistema, menus do bot e transferências
-- Foque apenas no problema relatado, diagnóstico e resolução
-- Não mencione nomes de atendentes, apenas "o Suporte"
-- Não mencione protocolos, horários nem CPF
-- Seja direto e técnico, como nos exemplos abaixo
+REGRAS:
 
-Exemplos de relatório bem feito:
-"Cliente relatou lentidão no celular e iPad, sem conseguir abrir sites. Realizados ajustes no roteador e reinicialização. Orientada a migrar para a rede 5 GHz. Cliente confirmou normalização."
-"Cliente solicitou religação após regularização de débito. Verificado desbloqueio já realizado via promessa de pagamento. Cliente confirmou funcionamento normal da conexão."
-"Foi feita uma visita na residência deste cliente. O técnico sugeriu a instalação de um ponto adicional para melhorar a conectividade, mas cliente negou. Hoje, entrou em contato relatando o mesmo problema. Foi repassado ao cliente o que o técnico informou no dia da visita."
+- Não narre o atendimento. Extraia apenas informação útil.
+- Sempre identifique a CAUSA MAIS PROVÁVEL (obrigatório).
+- Se houver causas secundárias, mencione brevemente.
+- Inclua evidências objetivas (ex: teste via cabo, nível de sinal, quedas PPPoE).
+- Não use linguagem vaga ("pode ser") sem priorização.
+- Seja direto, técnico e curto.
+
+ESTRUTURA (dentro do parágrafo):
+
+[Sintoma] + [Evidências] + [Diagnóstico principal] + [Ação tomada]
+
+REGRAS TÉCNICAS:
+
+- Se cabo estável → Wi-Fi não é causa principal
+- Se sinal <= -25 dBm → priorizar problema físico
+- Quedas PPPoE → indicar instabilidade de link
+
+EXEMPLO IDEAL:
+
+"Cliente relatou instabilidade com quedas frequentes. Verificado ONU online com quedas PPPoE e sinal em -26 dBm. Teste via cabo estável, descartando rede interna. Diagnóstico indica degradação de sinal óptico como causa principal, com possível influência de roteador próprio. Ajuste remoto realizado e agendada visita técnica para validação do cabo drop e conectores."
 
 Histórico:
 {chat_log}
