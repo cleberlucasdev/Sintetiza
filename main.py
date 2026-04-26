@@ -33,18 +33,11 @@ REGRAS GERAIS:
 - Priorize o diagnóstico explicitamente indicado pelo suporte.
 - Não invente causas sem evidência no chat.
 
-ESTRUTURA OBRIGATÓRIA (em fluxo natural, sem rótulos):
-[Sintoma] + [Evidências] + [Contexto relevante] + [Diagnóstico] + [Ação]
-
-DEFINIÇÕES:
-- Sintoma: problema relatado pelo cliente (ex: instabilidade, sem sinal).
-- Evidências: dados objetivos (ex: teste via cabo, quedas PPPoE, nível de sinal).
-- Contexto relevante: apenas o que ajuda próximos atendimentos (ex: chuva, recorrência, múltiplos clientes afetados).
-- Diagnóstico: causa mais provável definida pelo suporte.
-- Ação: o que foi feito (ex: ajuste remoto, agendamento, abertura de chamado).
+ESTRUTURA (em fluxo natural, sem rótulos):
+Sintoma + Evidências + Contexto relevante + Diagnóstico + Ação
 
 REGRAS DE FILTRAGEM:
-- Inclua OBRIGATORIAMENTE pelo menos 2 evidências objetivas quando disponíveis.
+- Inclua pelo menos 2 evidências objetivas quando disponíveis.
 - Se teste via cabo também falhar → não descartar rede interna automaticamente.
 - Se múltiplos clientes afetados → priorizar rede externa.
 - Se sinal <= -25 dBm → considerar degradação física.
@@ -53,26 +46,18 @@ REGRAS DE FILTRAGEM:
 REGRAS DE COMPRESSÃO:
 - Máximo de 5 frases.
 - Máximo de 90 palavras.
-- Inclua apenas informações que impactam diagnóstico ou continuidade.
-- Remova:
-  - cumprimentos
-  - repetições
-  - perguntas intermediárias
-  - detalhes irrelevantes (ex: cores de LED sem impacto)
+- Remova tudo que não impacta diagnóstico ou continuidade.
 - Não explique evidências; apenas declare (ex: “sinal -25 dBm”).
 
 REGRAS DE ESTILO (CRÍTICAS):
-- Não use rótulos como "Evidências:", "Diagnóstico:", "Ação:" ou similares.
-- Escreva como texto corrido, mantendo a ordem lógica das informações.
-- Evite linguagem especulativa ("pode", "possivelmente", "provável") quando já houver diagnóstico definido.
-- Preserve a forma mais objetiva do sintoma (ex: “quedas constantes” em vez de “queda intermitente”).
-
-REGRA DE QUALIDADE:
-- O texto deve permitir que o próximo atendente continue o atendimento sem repetir diagnóstico básico.
+- NUNCA use rótulos como "Evidências:", "Diagnóstico:", "Ação:" ou similares.
+- NUNCA use dois pontos para separar seções.
+- Escreva como texto corrido.
+- Evite linguagem especulativa quando já houver diagnóstico definido.
 
 EXEMPLO IDEAL:
 
-"Cliente relatou instabilidade com quedas constantes ao longo do dia. Verificado ONU online com quedas PPPoE e sinal em -25 dBm. Teste via cabo também apresentou falha. Ocorrência iniciou após chuva forte. Diagnóstico indica degradação de sinal óptico. Ação: aberto chamado para equipe externa verificar cabo drop e conectores, com previsão para o dia seguinte."
+"Cliente relatou lentidão geral em múltiplos dispositivos. ONU online, sem quedas, sinal em -20 dBm e teste via cabo com velocidade normal. Aproximadamente 10 dispositivos conectados ao Wi-Fi. Diagnóstico indica congestionamento na rede Wi-Fi. Orientado reinício do roteador, uso de rede 5 GHz e possível substituição do equipamento caso persista."
 
 Histórico:
 {chat_log}
