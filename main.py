@@ -16,7 +16,6 @@ app.add_middleware(
 )
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
@@ -84,16 +83,20 @@ async def process_chat_log(chat_log: str) -> str:
     return chat_log
 
 
-async def generate_with_gemini(prompt: str) -> str:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key={GEMINI_API_KEY}"
+async def generate_with_groq(prompt: str) -> str:
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 1000,
     }
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(url, json=payload)
+        response = await client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json=payload,
+        )
         response.raise_for_status()
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return response.json()["choices"][0]["message"]["content"].strip()
 
 
 @app.post("/generate-report")
@@ -103,7 +106,7 @@ async def generate_report(request: ReportRequest):
 
     processed_log = await process_chat_log(request.chat_log)
     prompt = REPORT_PROMPT.format(chat_log=processed_log)
-    report = await generate_with_gemini(prompt)
+    report = await generate_with_groq(prompt)
     return {"report": report}
 
 
