@@ -2,6 +2,7 @@ import os
 import re
 import httpx
 import tempfile
+import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -78,8 +79,12 @@ async def transcribe_audio(url: str) -> str:
 
 async def process_chat_log(chat_log: str) -> str:
     audio_urls = AUDIO_PATTERN.findall(chat_log)
-    for url in audio_urls:
-        transcription = await transcribe_audio(url)
+    if not audio_urls:
+        return chat_log
+    
+    transcriptions = await asyncio.gather(*[transcribe_audio(url) for url in audio_urls])
+    
+    for transcription in transcriptions:
         chat_log = AUDIO_PATTERN.sub(
             f"[ÁUDIO TRANSCRITO: {transcription}]",
             chat_log,
