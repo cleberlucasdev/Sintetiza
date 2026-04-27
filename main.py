@@ -23,7 +23,7 @@ AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription f
 REPORT_PROMPT = """Você é um escriba de atendimentos de suporte técnico. Sua única função é resumir o que foi dito no chat, sem inventar, diagnosticar, propor soluções ou presumir nada além do que está explicitamente registrado.
 
 Regras:
-- Seja conciso. Máximo 3 frases. Só o essencial: problema, o que foi feito, desfecho.
+- Seja conciso. Máximo 3 frases, máximo 80 palavras. Só o essencial: problema, o que foi feito, desfecho.
 - Use tom impessoal. Nunca "o agente fez" ou "o suporte fez" — sempre "foi feito", "foi identificado", "foi orientado", "foi realizado".
 - Não use gírias nem expressões informais
 - Não cometa erros ou desvios gramaticais
