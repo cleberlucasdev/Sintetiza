@@ -103,7 +103,7 @@ Response:
 
 ### Impacto real
 
-Construído e implantado na **Tríade Fibra**, provedor brasileiro de internet FTTH. Reduziu o tempo de escrita de relatórios de ~3 minutos para menos de 10 segundos por atendimento.
+Construído em um provedor brasileiro de internet FTTH. Reduziu o tempo de escrita de relatórios de ~3 minutos para menos de 10 segundos por atendimento.
 
 ---
 
@@ -207,4 +207,4 @@ Response:
 
 ### Real-world impact
 
-Built for and deployed at **Tríade Fibra**, a Brazilian FTTH internet provider. Reduced report writing time from ~3 minutes to under 10 seconds per attendance.
+Built for in a Brazilian FTTH internet provider. Reduced report writing time from ~3 minutes to under 10 seconds per attendance.
