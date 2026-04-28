@@ -5,6 +5,7 @@ import tempfile
 import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -12,9 +13,13 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.head("/health")
+async def health_head():
+    return Response(status_code=200)
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
