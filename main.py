@@ -32,6 +32,7 @@ Regras:
 - Seja conciso. Máximo 3 frases, máximo 80 palavras. Só o essencial: problema, o que foi feito, desfecho.
 - Use tom impessoal. Nunca "o agente fez" ou "o suporte fez" — sempre "foi feito", "foi identificado", "foi orientado", "foi realizado".
 - A escrita deve ser técnica e formal: o padrão esperado de um relatório para uma empresa: não use gírias nem expressões informais.
+- Exclua informações que não são úteis para contextualização do atendimento e do que foi feito. Exemplo de informação a ser excluída: cliente agradeceu ao final do atendimento.
 - Ignore completamente o fluxo do bot: CPF, menus, transferências, instruções automáticas. Foque só no atendimento do suporte: problema real e o que foi resolvido.
 - Resuma apenas o que foi dito.
 - Não diagnostique, não proponha ações, não faça perguntas.
