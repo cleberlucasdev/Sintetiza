@@ -25,39 +25,33 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
-REPORT_PROMPT = """Você é um escriba de atendimentos de suporte técnico. Sua única função é resumir o que foi dito no chat, sem inventar, diagnosticar, propor soluções ou presumir nada além do que está explicitamente registrado.
+REPORT_PROMPT = """Resuma o atendimento de suporte técnico abaixo em um relatório técnico. Não invente, não diagnostique, não proponha ações, não faça perguntas — só relate o que consta no registro.
 
 Regras:
-- Nada antes do atendimento do Suporte iniciar interessa para a análise.
-- Seja conciso. Máximo 3 frases, máximo 80 palavras. Só o essencial: problema, o que foi feito, desfecho.
-- Use tom impessoal. Nunca "o agente fez" ou "o suporte fez" — sempre "foi feito", "foi identificado", "foi orientado", "foi realizado".
-- A escrita deve ser técnica e formal: o padrão esperado de um relatório para uma empresa: não use gírias nem expressões informais.
-- Exclua informações que não são úteis para contextualização do atendimento e do que foi feito. Exemplo de informação a ser excluída: cliente agradeceu ao final do atendimento.
-- Ignore completamente o fluxo do bot: CPF, menus, transferências, instruções automáticas. Foque só no atendimento do suporte: problema real e o que foi resolvido.
-- Resuma apenas o que foi dito.
-- Não diagnostique, não proponha ações, não faça perguntas.
-- Se o atendimento foi curto ou inconclusivo, o relatório também será curto.
-- Não mencione nomes de atendentes.
-- Não mencione protocolos, horários, nem dados pessoais.
-- Escreva em um único parágrafo, em português.
+- Considere só o atendimento em si (ignore mensagens automáticas/de bot: CPF, menus, transferências) e só o essencial: problema, o que foi feito, desfecho. Corte o irrelevante (ex: agradecimentos).
+- Tom impessoal e formal, sem gírias: "foi feito/identificado/orientado", nunca "o agente/suporte fez".
+- Um único parágrafo, em português. Sem nomes de atendentes, protocolos, horários ou dados pessoais.
+- Atendimento curto/inconclusivo → relatório curto.
+- Se houver "Informações adicionais": elas descrevem o que foi tecnicamente executado de fato, do ponto de vista interno do suporte, e têm PRECEDÊNCIA sobre o chat (ex: chat diz "atualizei o roteador", adicional diz "troquei DNS e bloco de IP" → relatório reflete o adicional). Nunca trate esse campo como fala do cliente ou do chat.
 
-Exemplos: 
-1) Chat: cliente entrou em contato mas não respondeu após ser atendido.
-Relatório: "Cliente entrou em contato, mas cessou as interações. Atendimento encerrado por ausência de resposta."
-
-2) Chat: cliente relatou lentidão, suporte fez ajustes no roteador, cliente confirmou melhora.
+Exemplos:
+1) Chat: cliente relatou lentidão, suporte fez ajustes no roteador, cliente confirmou melhora. Sem informações adicionais.
 Relatório: "Cliente relatou lentidão na conexão. Realizados ajustes no roteador e cliente confirmou normalização."
 
-3) Chat: cliente sem acesso, suporte identificou ONU offline, agendou visita técnica.
-Relatório: "Cliente relatou ausência de conexão. Identificado sinal ausente na ONU. Visita técnica agendada."
+2) Chat: cliente relatou lentidão, suporte disse que "atualizou o roteador". Informações adicionais: "troquei o DNS para 8.8.8.8 e mudei o bloco de IP do cliente para o pool novo".
+Relatório: "Cliente relatou lentidão na conexão. Foram realizados alteração do servidor DNS e migração do endereço IP do cliente para novo bloco. Cliente confirmou normalização."
 
-Histórico:
+Histórico do chat:
 {chat_log}
+
+Informações adicionais (interno, pode não ter sido dito ao cliente):
+{additional_info}
 
 Relatório:"""
 
 class ReportRequest(BaseModel):
     chat_log: str
+    additional_info: str = ""
 
 
 async def transcribe_audio(url: str) -> str:
@@ -124,7 +118,11 @@ async def generate_report(request: ReportRequest):
         raise HTTPException(status_code=400, detail="chat_log vazio")
 
     processed_log = await process_chat_log(request.chat_log)
-    prompt = REPORT_PROMPT.format(chat_log=processed_log)
+    additional_info = request.additional_info.strip() or "(nenhuma)"
+    prompt = REPORT_PROMPT.format(
+        chat_log=processed_log,
+        additional_info=additional_info,
+    )
     report = await generate_with_groq(prompt)
     return {"report": report}
 
