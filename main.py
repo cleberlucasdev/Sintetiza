@@ -3,8 +3,7 @@ import re
 import httpx
 import tempfile
 import asyncio
-import asyncpg
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -23,53 +22,6 @@ async def health_head():
     return Response(status_code=200)
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-DATABASE_URL = os.environ.get("DATABASE_URL")  # string de conexão do Postgres (ex: Neon), fica em outro servidor
-
-CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS usage_log (
-    id SERIAL PRIMARY KEY,
-    attendant TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    prompt_tokens INT,
-    completion_tokens INT,
-    total_tokens INT
-);
-"""
-
-
-@app.on_event("startup")
-async def ensure_table_exists():
-    # Cria a tabela na primeira vez que o servidor sobe, se ainda não existir.
-    # Não trava o startup do app se o banco estiver fora do ar.
-    if not DATABASE_URL:
-        print("[usage_log] DATABASE_URL não configurada — tracking de uso desabilitado.")
-        return
-    try:
-        conn = await asyncpg.connect(DATABASE_URL)
-        await conn.execute(CREATE_TABLE_SQL)
-        await conn.close()
-    except Exception as e:
-        print(f"[usage_log] falha ao garantir tabela: {e}")
-
-
-async def log_usage(attendant: str, usage: dict):
-    if not DATABASE_URL:
-        return
-    try:
-        conn = await asyncpg.connect(DATABASE_URL)
-        await conn.execute(
-            "INSERT INTO usage_log (attendant, prompt_tokens, completion_tokens, total_tokens) "
-            "VALUES ($1, $2, $3, $4)",
-            attendant or "desconhecido",
-            usage.get("prompt_tokens"),
-            usage.get("completion_tokens"),
-            usage.get("total_tokens"),
-        )
-        await conn.close()
-    except Exception as e:
-        # Métrica é secundária: se o banco falhar, o relatório ainda deve ser entregue.
-        print(f"[usage_log] falha ao gravar uso: {e}")
-
 
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
@@ -176,7 +128,7 @@ async def generate_with_groq(prompt: str) -> dict:
 
 
 @app.post("/generate-report")
-async def generate_report(request: ReportRequest, background_tasks: BackgroundTasks):
+async def generate_report(request: ReportRequest):
     if not request.chat_log.strip():
         raise HTTPException(status_code=400, detail="chat_log vazio")
 
@@ -187,9 +139,6 @@ async def generate_report(request: ReportRequest, background_tasks: BackgroundTa
         additional_info=additional_info,
     )
     result = await generate_with_groq(prompt)
-
-    # Gravar o uso não pode atrasar a resposta pro atendente — roda depois de responder.
-    background_tasks.add_task(log_usage, request.attendant, result["usage"])
 
     return {"report": result["content"]}
 
