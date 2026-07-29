@@ -109,7 +109,7 @@ async def process_chat_log(chat_log: str) -> str:
 
 async def generate_with_groq(prompt: str) -> dict:
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 350,
     }
