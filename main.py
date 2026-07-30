@@ -180,7 +180,7 @@ def _truncate_input(text: str, label: str) -> str:
 
 async def generate_with_groq(prompt: str) -> dict:
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": GROQ_MAX_COMPLETION_TOKENS,
     }
