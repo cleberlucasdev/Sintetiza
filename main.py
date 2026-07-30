@@ -79,8 +79,20 @@ Regras:
 - Não inclua orientações genéricas de primeiro nível dadas automaticamente (ex: "desligue o aparelho da energia por 30 segundos") a menos que tenham sido a ação que resolveu o problema. O que importa é o sintoma relatado e o que foi tecnicamente feito, não o roteiro padrão de atendimento.
 - Tom impessoal e formal, sem gírias: "foi feito/identificado/orientado", nunca "o agente/suporte fez".
 - Um único parágrafo, em português. Sem nomes de atendentes, protocolos, horários ou dados pessoais.
-- Não existe número fixo de frases — o tamanho é ditado pela quantidade de fatos reais, nunca por vontade de elaborar. Regra: máxima densidade. Um atendimento com 1 sintoma e 1 ação cabe em 1 frase. Um atendimento com vários sintomas ou várias ações distintas pode legitimamente precisar de mais frases — mas cada frase carrega um fato novo, nunca reforça, explica ou reformula um fato já dito. Se uma frase pode ser cortada sem perder informação, ela deve ser cortada.
-- Proibido: frases de transição ("Diante disso", "Após isso"), floreio, redundância semântica (dizer a mesma coisa 2x com sinônimos), explicação de contexto óbvio (ex: não precisa dizer que reiniciar resolve problemas comuns — só diga que foi feito e o resultado).
+
+HIERARQUIA DE FATOS (aplique antes de escrever qualquer frase):
+Todo fato do atendimento se encaixa em uma destas categorias. Só as 4 primeiras geram frase própria:
+1. Sintoma relatado pelo cliente — sempre incluir.
+2. Ação ou verificação que MUDOU o resultado (resolveu, alterou o diagnóstico, ou foi a causa raiz identificada) — sempre incluir.
+3. Conclusão/diagnóstico final — sempre incluir, uma única vez.
+4. Encaminhamento ou desfecho dado ao cliente — sempre incluir.
+5. Testes, checagens ou verificações que NÃO alteraram o resultado (descartaram uma hipótese, confirmaram que algo já estava correto, ou não mudaram o quadro) — NUNCA listar individualmente. Se houver uma ou mais dessas, funda todas em uma única frase genérica indicando que verificações foram feitas sem alteração no quadro (ex: "Foram verificadas configurações do dispositivo e da conexão, sem alteração no comportamento identificado."). Não cite quais especificamente, não cite valores técnicos (taxas, dBm, versões) a menos que esse valor específico tenha sido a causa raiz confirmada.
+6. Reafirmação da mesma conclusão sob ângulos diferentes (ex: dizer "não é a rede" de três formas ao longo do atendimento) — mencione uma vez só, na frase de conclusão.
+
+Regra de ouro: uma ação só merece frase própria se ela (a) resolveu o problema, (b) mudou o diagnóstico, ou (c) é o encaminhamento final. Tudo que é etapa de descarte vira UMA menção coletiva, nunca uma lista.
+
+- Não existe número fixo de frases — o tamanho é ditado pela quantidade de fatos das categorias 1-4, nunca pela quantidade de linhas do chat. Um atendimento com 1 sintoma e 1 ação cabe em 1 frase. Um atendimento com várias categorias 1-4 distintas pode legitimamente precisar de mais frases — mas cada frase carrega um fato novo dessas categorias, nunca reforça, explica ou reformula um fato já dito.
+- Proibido: frases de transição ("Diante disso", "Após isso"), floreio, redundância semântica, explicação de contexto óbvio.
 - Atendimento curto/inconclusivo → relatório curto.
 - Se houver "Informações adicionais": elas descrevem o que foi tecnicamente executado de fato, do ponto de vista interno do suporte, e têm PRECEDÊNCIA sobre o chat (ex: chat diz "atualizei o roteador", adicional diz "troquei DNS e bloco de IP" → relatório reflete o adicional). Nunca trate esse campo como fala do cliente ou do chat.
 - PROIBIDO citar a origem da informação no texto (ex: "informações adicionais indicam que", "de acordo com o campo adicional", "conforme relatado internamente"). O relatório narra os fatos como fatos, ponto — nunca menciona de qual campo de entrada (chat ou adicional) cada fato veio. Errado: "Informações adicionais indicam que foi realizada manutenção no backbone." Certo: "Foi realizada manutenção no backbone."
@@ -97,6 +109,9 @@ Relatório: "Cliente relatou lentidão de conexão afetando múltiplos aplicativ
 
 4) Chat: cliente relatou instabilidade intermitente há 3 dias, quedas de sinal em horários aleatórios; suporte verificou sinal óptico da ONU e encontrou nível baixo (-28dBm); trocou o cabo drop; suporte também identificou firmware desatualizado no roteador e atualizou; cliente testou e confirmou estabilidade.
 Relatório: "Cliente relatou instabilidade intermitente com quedas de sinal há 3 dias. Identificado nível de sinal óptico baixo na ONU (-28dBm) e realizada troca do cabo drop. Firmware do roteador estava desatualizado e foi atualizado. Cliente confirmou estabilidade após as correções."
+
+5) Chat: cliente relatou velocidade limitada a ~100Mbps apenas no MacBook (cabo e Wi-Fi), enquanto outros dispositivos ficavam normais; houve visita técnica com ajuste de configurações e atualização do roteador; suporte verificou configuração da placa de rede Ethernet do Mac (estava automática, testou manual em 1000Mbps, sem mudança), verificou Network Link Conditioner (desligado), verificou modo de baixa carga de dados (desligado), confirmou taxa de enlace Wi-Fi de 1201Mbps e testou novamente via cabo — nenhuma dessas checagens alterou o teto de 100Mbps; concluiu-se que a limitação está no próprio equipamento; cliente foi orientado a buscar assistência técnica especializada no Mac. Oscilações anteriores (quedas a 20-30Mbps) cessaram após a visita.
+Relatório: "Cliente relatou velocidade limitada a aproximadamente 100Mbps no MacBook, tanto via cabo quanto via Wi-Fi, enquanto os demais dispositivos operavam normalmente. Foram verificadas configurações de rede e hardware do equipamento, sem alteração no comportamento identificado. Concluiu-se que a limitação está associada ao próprio equipamento, e o cliente foi orientado a buscar assistência técnica especializada para avaliação do aparelho. Oscilações de conexão relatadas em dias anteriores cessaram após visita técnica realizada."
 
 Histórico do chat:
 {chat_log}
