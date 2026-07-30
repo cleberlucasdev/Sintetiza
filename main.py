@@ -3,6 +3,8 @@ import re
 import httpx
 import tempfile
 import asyncio
+import time
+import itertools
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -21,7 +23,51 @@ app.add_middleware(
 async def health_head():
     return Response(status_code=200)
 
-GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+# Pool de API keys da Groq, em round-robin. A primeira é obrigatória; a segunda e a
+# terceira são opcionais — se GROQ_API_KEY_2/_3 não estiverem setadas no ambiente,
+# roda só com as que existirem (comportamento idêntico a antes com 1 key).
+_raw_keys = [
+    os.environ.get("GROQ_API_KEY"),
+    os.environ.get("GROQ_API_KEY_2"),
+    os.environ.get("GROQ_API_KEY_3"),
+]
+GROQ_API_KEYS = [k for k in _raw_keys if k]
+if not GROQ_API_KEYS:
+    raise RuntimeError("Nenhuma GROQ_API_KEY configurada")
+
+KEY_COOLDOWN_SECONDS = 60  # tempo que uma key fica de fora do round-robin após falha própria dela
+
+# Timestamp (time.monotonic) até quando cada key fica "de molho". Ausente = disponível.
+_key_cooldown_until: dict[str, float] = {}
+_key_cycle = itertools.cycle(range(len(GROQ_API_KEYS)))
+_key_cycle_lock = asyncio.Lock()
+
+
+def _key_label(key: str) -> str:
+    # só os últimos 4 caracteres, pra logar sem expor a key inteira
+    return f"...{key[-4:]}"
+
+
+def _is_key_disabled(key: str) -> bool:
+    return _key_cooldown_until.get(key, 0.0) > time.monotonic()
+
+
+def _flag_key_unavailable(key: str, reason: str) -> None:
+    _key_cooldown_until[key] = time.monotonic() + KEY_COOLDOWN_SECONDS
+    print(f"[groq-keys] key {_key_label(key)} marcada indisponível por {KEY_COOLDOWN_SECONDS}s ({reason})")
+
+
+async def _next_key() -> str:
+    """Próxima key disponível em round-robin, pulando as em cooldown.
+    Se todas estiverem em cooldown (situação extrema — pool inteiro sem cota),
+    devolve a próxima da fila mesmo assim: melhor tentar com uma key suspeita
+    do que recusar o request de cara."""
+    async with _key_cycle_lock:
+        for _ in range(len(GROQ_API_KEYS)):
+            key = GROQ_API_KEYS[next(_key_cycle)]
+            if not _is_key_disabled(key):
+                return key
+        return GROQ_API_KEYS[next(_key_cycle)]
 
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
@@ -37,6 +83,7 @@ Regras:
 - Proibido: frases de transição ("Diante disso", "Após isso"), floreio, redundância semântica (dizer a mesma coisa 2x com sinônimos), explicação de contexto óbvio (ex: não precisa dizer que reiniciar resolve problemas comuns — só diga que foi feito e o resultado).
 - Atendimento curto/inconclusivo → relatório curto.
 - Se houver "Informações adicionais": elas descrevem o que foi tecnicamente executado de fato, do ponto de vista interno do suporte, e têm PRECEDÊNCIA sobre o chat (ex: chat diz "atualizei o roteador", adicional diz "troquei DNS e bloco de IP" → relatório reflete o adicional). Nunca trate esse campo como fala do cliente ou do chat.
+- PROIBIDO citar a origem da informação no texto (ex: "informações adicionais indicam que", "de acordo com o campo adicional", "conforme relatado internamente"). O relatório narra os fatos como fatos, ponto — nunca menciona de qual campo de entrada (chat ou adicional) cada fato veio. Errado: "Informações adicionais indicam que foi realizada manutenção no backbone." Certo: "Foi realizada manutenção no backbone."
 
 Exemplos:
 1) Chat: cliente relatou lentidão, suporte fez ajustes no roteador, cliente confirmou melhora. Sem informações adicionais.
@@ -75,20 +122,29 @@ async def transcribe_audio(url: str) -> str:
             f.write(audio_response.content)
             tmp_path = f.name
 
-        with open(tmp_path, "rb") as audio_file:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                files={"file": ("audio.ogg", audio_file, "audio/ogg")},
-                data={"model": "whisper-large-v3", "language": "pt"},
-            )
+        try:
+            for _ in range(len(GROQ_API_KEYS)):
+                key = await _next_key()
+                with open(tmp_path, "rb") as audio_file:
+                    response = await client.post(
+                        "https://api.groq.com/openai/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {key}"},
+                        files={"file": ("audio.ogg", audio_file, "audio/ogg")},
+                        data={"model": "whisper-large-v3", "language": "pt"},
+                    )
 
-        os.unlink(tmp_path)
+                if response.status_code in (401, 429):
+                    _flag_key_unavailable(key, f"HTTP {response.status_code}")
+                    continue
 
-        if response.status_code != 200:
+                if response.status_code != 200:
+                    return "[transcrição indisponível]"
+
+                return response.json().get("text", "[transcrição indisponível]")
+
             return "[transcrição indisponível]"
-
-        return response.json().get("text", "[transcrição indisponível]")
+        finally:
+            os.unlink(tmp_path)
 
 
 async def process_chat_log(chat_log: str) -> str:
@@ -128,39 +184,52 @@ async def generate_with_groq(prompt: str) -> dict:
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": GROQ_MAX_COMPLETION_TOKENS,
     }
+    last_key_error = None
     async with httpx.AsyncClient(timeout=30) as client:
-        try:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json=payload,
-            )
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            # Erro real da Groq (ex: contexto estourado, rate limit, chave inválida).
-            # Antes isso subia cru e virava 500 sem explicação nenhuma pro atendente.
-            detail = e.response.text[:300]
-            raise HTTPException(
-                status_code=502,
-                detail=f"Falha ao gerar relatório na Groq ({e.response.status_code}): {detail}",
-            )
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Falha de conexão com a Groq: {e}")
+        for _ in range(len(GROQ_API_KEYS)):
+            key = await _next_key()
+            try:
+                response = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json=payload,
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                status = e.response.status_code
+                detail = e.response.text[:300]
+                if status in (401, 429):
+                    # Falha da própria key (inválida/revogada ou cota estourada) —
+                    # marca essa key de fora e tenta a próxima do pool.
+                    _flag_key_unavailable(key, f"HTTP {status}")
+                    last_key_error = f"Falha ao gerar relatório na Groq ({status}): {detail}"
+                    continue
+                # Erro que não é sobre a key (ex: prompt malformado, 5xx da Groq) —
+                # trocar de key não resolve nada, então propaga direto.
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Falha ao gerar relatório na Groq ({status}): {detail}",
+                )
+            except httpx.RequestError as e:
+                raise HTTPException(status_code=502, detail=f"Falha de conexão com a Groq: {e}")
 
-        data = response.json()
-        choice = data["choices"][0]
-        content = choice["message"]["content"].strip()
+            data = response.json()
+            choice = data["choices"][0]
+            content = choice["message"]["content"].strip()
 
-        # Se o modelo foi cortado pelo teto de tokens, o relatório sai pela metade
-        # (finish_reason == "length") mesmo sem nenhum erro HTTP. Sinaliza no log
-        # do Render pra dar pra rastrear caso volte a acontecer com o novo teto.
-        if choice.get("finish_reason") == "length":
-            print(f"[generate-report] resposta truncada por max_tokens ({GROQ_MAX_COMPLETION_TOKENS})")
+            if choice.get("finish_reason") == "length":
+                print(f"[generate-report] resposta truncada por max_tokens ({GROQ_MAX_COMPLETION_TOKENS})")
 
-        return {
-            "content": content,
-            "usage": data.get("usage", {}),
-        }
+            return {
+                "content": content,
+                "usage": data.get("usage", {}),
+            }
+
+    # todas as keys do pool falharam com 401/429
+    raise HTTPException(
+        status_code=502,
+        detail=last_key_error or "Todas as keys da Groq estão indisponíveis no momento.",
+    )
 
 
 @app.post("/generate-report")
