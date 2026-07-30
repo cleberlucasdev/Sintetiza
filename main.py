@@ -107,22 +107,58 @@ async def process_chat_log(chat_log: str) -> str:
     return chat_log
 
 
+GROQ_MAX_COMPLETION_TOKENS = 2000  # teto de saída com folga grande de propósito — quem garante o tamanho enxuto é o prompt, não esse limite
+
+# Limite defensivo de entrada: chat_log + additional_info muito grandes podem estourar o
+# TPM (tokens por minuto) do plano da Groq ou o contexto aceito pelo modelo no request,
+# fazendo a API devolver erro em vez de 200. Cortamos ANTES de montar o prompt, mantendo
+# o fim do texto (onde geralmente está o desfecho/confirmação do cliente).
+MAX_INPUT_CHARS = 12000
+
+
+def _truncate_input(text: str, label: str) -> str:
+    if len(text) <= MAX_INPUT_CHARS:
+        return text
+    return f"[...trecho inicial omitido por tamanho...]\n{text[-MAX_INPUT_CHARS:]}"
+
+
 async def generate_with_groq(prompt: str) -> dict:
     payload = {
-        "model": "openai/gpt-oss-120b",
+        "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 350,
+        "max_tokens": GROQ_MAX_COMPLETION_TOKENS,
     }
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-            json=payload,
-        )
-        response.raise_for_status()
+        try:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json=payload,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            # Erro real da Groq (ex: contexto estourado, rate limit, chave inválida).
+            # Antes isso subia cru e virava 500 sem explicação nenhuma pro atendente.
+            detail = e.response.text[:300]
+            raise HTTPException(
+                status_code=502,
+                detail=f"Falha ao gerar relatório na Groq ({e.response.status_code}): {detail}",
+            )
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Falha de conexão com a Groq: {e}")
+
         data = response.json()
+        choice = data["choices"][0]
+        content = choice["message"]["content"].strip()
+
+        # Se o modelo foi cortado pelo teto de tokens, o relatório sai pela metade
+        # (finish_reason == "length") mesmo sem nenhum erro HTTP. Sinaliza no log
+        # do Render pra dar pra rastrear caso volte a acontecer com o novo teto.
+        if choice.get("finish_reason") == "length":
+            print(f"[generate-report] resposta truncada por max_tokens ({GROQ_MAX_COMPLETION_TOKENS})")
+
         return {
-            "content": data["choices"][0]["message"]["content"].strip(),
+            "content": content,
             "usage": data.get("usage", {}),
         }
 
@@ -133,7 +169,8 @@ async def generate_report(request: ReportRequest):
         raise HTTPException(status_code=400, detail="chat_log vazio")
 
     processed_log = await process_chat_log(request.chat_log)
-    additional_info = request.additional_info.strip() or "(nenhuma)"
+    processed_log = _truncate_input(processed_log, "chat_log")
+    additional_info = _truncate_input(request.additional_info.strip(), "additional_info") or "(nenhuma)"
     prompt = REPORT_PROMPT.format(
         chat_log=processed_log,
         additional_info=additional_info,
