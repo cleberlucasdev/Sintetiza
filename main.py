@@ -27,10 +27,12 @@ AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription f
 
 REPORT_PROMPT = """Resuma este atendimento de suporte técnico num registro curto para consulta futura sobre esse cliente. É o resultado do atendimento, não a história de como se chegou a ele.
 
-Inclua só:
-- Sintoma(s) relatado(s) pelo cliente.
-- Ação(ões) técnica(s) realizada(s).
-- Desfecho: resolvido, não resolvido, ou não confirmado (com o motivo, em poucas palavras).
+Inclua apenas, integrado num parágrafo corrido — nunca como rótulo, campo ou lista:
+- o que o cliente relatou,
+- o que foi feito tecnicamente,
+- como terminou: resolvido, não resolvido, ou não confirmado (com o motivo, em poucas palavras).
+
+O desfecho já deve estar dentro da narrativa. NUNCA adicione uma frase separada no final resumindo ou rotulando o desfecho (ex: nada de "Desfecho: ...", "Resultado: ...", ou qualquer frase que apenas repita o que já foi dito na frase anterior com outras palavras).
 
 Nunca inclua:
 - O caminho até a causa: testes que não deram resultado, erro de digitação do cliente, confirmações redundantes do mesmo fix já relatado.
