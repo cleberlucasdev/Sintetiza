@@ -7,6 +7,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
+from starlette.middleware.exceptions import ExceptionMiddleware
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -20,6 +22,14 @@ app.add_middleware(
 @app.head("/health")
 async def health_head():
     return Response(status_code=200)
+
+@app.exception_handler(Exception)
+async def cors_safe_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
@@ -108,7 +118,7 @@ async def process_chat_log(chat_log: str) -> str:
 
 async def generate_with_groq(prompt: str) -> str:
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 350,
     }
