@@ -120,7 +120,7 @@ async def generate_with_groq(prompt: str) -> str:
     payload = {
         "model": "openai/gpt-oss-120b",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 350,
+        "max_tokens": 1300,
     }
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(
