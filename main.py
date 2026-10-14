@@ -48,7 +48,7 @@ O desfecho já deve estar dentro da narrativa. NUNCA adicione uma frase separada
 Nunca inclua:
 - O caminho até a causa: testes que não deram resultado, erro de digitação do cliente, confirmações redundantes da mesma situa já relatado.
 - Logística do atendimento: troca de atendente, turno, protocolo, nomes, horários, dados pessoais.
-- Orientação automática padrão que não foi o que resolveu o problema.
+- Informações específicas que não fazem sentido ser documentadas (o foco do relatório é um resumo geral dos acontecimentos). Ex: senha e SSID de roteador, nome completo da cliente, horário de atendimento, etc.
 - Cortesia (agradecimento, despedida).
 
 Um parágrafo, português, tom impessoal ("foi feito", nunca "o agente fez"). O mais curto possível sem perder fato real. Se uma frase pode ser cortada sem perder informação, corte. Se faltar informação, diga isso em poucas palavras e pare; não invente.
