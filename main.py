@@ -37,7 +37,7 @@ AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription f
 
 REPORT_PROMPT = """Resuma este atendimento de suporte técnico num registro curto. É o resultado do atendimento do Suporte Técnico, não a história de como se chegou a ele.
 Você receberá, além deste prompt, três arquivos: 
-1) "Chat History": é a fonte principal, com todos os acontecimentos do atendimento.
+1) "Chatlog": é a fonte principal, com todos os acontecimentos do atendimento.
 2) "Examples": exemplos de resumos de atendimentos, você deve se basear nestes ao escrever.
 3) "Additional Information": informações adicionais sobre o atendimento: É o que foi tecnicamente feito de verdade, não é fala do cliente, e tem prioridade sobre o chat quando existir. Se estiver vazio, ignore.
 
@@ -62,11 +62,11 @@ Um parágrafo, português, tom impessoal ("foi feito", nunca "o agente fez"). O 
 
 EXAMPLES = """
 Exemplos:
-1) "Cliente relatou lentidão na conexão. Realizados ajustes de canais e largura de banda nas configurações Wi-Fi. Cliente confirmou normalização."
-
-2) "Cliente relatou instabilidade intermitente há 3 dias. Foi identificada uma atualização pendente no roteador, prejudicando a estabilidade da conexão. O firmware do roteador foi atualizado. Após, o cliente confirmou estabilidade."
-
-3) "Cliente relatou lentidão na rede e solicitou troca de senha do aplicativo. Foi feita atualização no roteador; cliente não pôde testar por não estar em casa no momento. Acesso ao aplicativo restaurado."
+1) "Cliente relatou lentidão apenas no Wi-Fi, com conexão cabeada normal. 
+Identificada interferência de canal na faixa de 2,4 GHz, com outras redes concentradas no mesmo canal. Canal foi alterado para faixa menos congestionada, e cliente confirmou velocidade normalizada."
+2) "Cliente relatou quedas de conexão a cada poucas horas. Verificado sinal óptico abaixo do esperado na ONU, causado por conector de fibra sujo no ponto de terminação. Conector foi limpo e o sinal retornou aos níveis normais, cliente confirmou estabilidade."
+3) "Cliente relatou falta de internet, com equipamento ligado e luz de conexão acesa. 
+Constatado que o login PPPoE estava desprovisionado após troca de equipamento recente. Credenciais foram reprovisionadas e a conexão restabelecida, e o cliente confirmou acesso."
 """
 
 class ReportRequest(BaseModel):
@@ -120,8 +120,8 @@ async def generate_with_groq(prompt: str, processed_log: str, examples: str, add
         "model": "openai/gpt-oss-120b",
         "messages": [{"role": "system", "content": prompt}, 
                      {"role": "user", "content": processed_log},
-                     {"role": "system", "content": examples},
-                     {"role": "user", "content": additional_info}],
+                     {"role": "user", "content": additional_info},
+                     {"role": "system", "content": examples}],
         "max_tokens": 3500,
     }
     async with httpx.AsyncClient(timeout=30) as client:
@@ -139,8 +139,11 @@ async def generate_report(request: ReportRequest):
     if not request.chat_log.strip():
         raise HTTPException(status_code=400, detail="chat_log vazio")
 
-    processed_log = await process_chat_log(request.chat_log)
-    additional_info = request.additional_info.strip() or "(nenhuma)"
+    processed_log = "Chatlog:\n" + await process_chat_log(request.chat_log)
+
+    info = request.additional_info.strip()
+    additional_info = f"Additional Information:\n {info}" if info else "(nenhuma)"
+
     report = await generate_with_groq(REPORT_PROMPT, processed_log, EXAMPLES, additional_info)
     return {"report": report}
 
