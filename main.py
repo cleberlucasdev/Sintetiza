@@ -36,6 +36,12 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 AUDIO_PATTERN = re.compile(r'\[AUDIO: (https?://\S+?)\](?:\n\(No transcription found\))?')
 
 REPORT_PROMPT = """Resuma este atendimento de suporte técnico num registro curto. É o resultado do atendimento do Suporte Técnico, não a história de como se chegou a ele.
+Você receberá, além deste prompt, três arquivos: 
+1) "Chat History": é a fonte principal, com todos os acontecimentos do atendimento.
+2) "Examples": exemplos de resumos de atendimentos, você deve se basear nestes ao escrever.
+3) "Additional Information": informações adicionais sobre o atendimento: É o que foi tecnicamente feito de verdade, não é fala do cliente, e tem prioridade sobre o chat quando existir. Se estiver vazio, ignore.
+
+O foco do relatório é um resumo geral dos acontecimentos, de forma que o desfecho seja devidamente registrado.
 
 Inclua apenas, num parágrafo corrido, o seguinte:
 - o que o cliente relatou,
@@ -43,37 +49,29 @@ Inclua apenas, num parágrafo corrido, o seguinte:
 - somente o atendimento do Suporte Técnico: ignore mensagens de outros setores, como Financeiro e Comercial, e não inclua seu desfecho.
 - como terminou.
 
-O desfecho já deve estar dentro da narrativa. NUNCA adicione uma frase separada no final resumindo ou rotulando o desfecho (ex: nada de "Desfecho: ...", "Resultado: ...", ou qualquer frase que apenas repita o que já foi dito na frase anterior com outras palavras).
+Nunca adicione uma frase separada, no final, resumindo ou rotulando o desfecho (ex: nada de "Desfecho: ...", "Resultado: ...", ou qualquer frase que apenas repita o que já foi dito na frase anterior com outras palavras).
 
 Nunca inclua:
-- O caminho até a causa: testes que não deram resultado, erro de digitação do cliente, confirmações redundantes da mesma situa já relatado.
+- O caminho até a causa: testes que não deram resultado, erro de digitação do cliente, confirmações redundantes da mesma situação já descrita.
 - Logística do atendimento: troca de atendente, turno, protocolo, nomes, horários, dados pessoais.
 - Informações específicas que não fazem sentido ser documentadas (o foco do relatório é um resumo geral dos acontecimentos). Ex: senha e SSID de roteador, nome completo da cliente, horário de atendimento, etc.
 - Cortesia (agradecimento, despedida).
 
 Um parágrafo, português, tom impessoal ("foi feito", nunca "o agente fez"). O mais curto possível sem perder fato real. Se uma frase pode ser cortada sem perder informação, corte. Se faltar informação, diga isso em poucas palavras e pare; não invente.
+"""
 
-"Informações adicionais" (quando houver) é o que foi tecnicamente feito de verdade, não é fala do cliente, e tem prioridade sobre o chat.
-
+EXAMPLES = """
 Exemplos:
-1) "Cliente relatou lentidão na conexão. Realizados ajustes no roteador. Cliente confirmou normalização."
+1) "Cliente relatou lentidão na conexão. Realizados ajustes de canais e largura de banda nas configurações Wi-Fi. Cliente confirmou normalização."
 
-2) "Cliente relatou instabilidade intermitente há 3 dias. Identificado sinal óptico baixo na ONU; firmware do roteador foi atualizado. Cliente confirmou estabilidade."
+2) "Cliente relatou instabilidade intermitente há 3 dias. Foi identificada uma atualização pendente no roteador, prejudicando a estabilidade da conexão. O firmware do roteador foi atualizado. Após, o cliente confirmou estabilidade."
 
 3) "Cliente relatou lentidão na rede e solicitou troca de senha do aplicativo. Foi feita atualização no roteador; cliente não pôde testar por não estar em casa no momento. Acesso ao aplicativo restaurado."
-
-Histórico do chat:
-{chat_log}
-
-Informações adicionais:
-{additional_info}
-
-Relatório:"""
+"""
 
 class ReportRequest(BaseModel):
     chat_log: str
     additional_info: str = ""
-
 
 async def transcribe_audio(url: str) -> str:
     async with httpx.AsyncClient(timeout=30) as client:
@@ -117,11 +115,14 @@ async def process_chat_log(chat_log: str) -> str:
     return chat_log
 
 
-async def generate_with_groq(prompt: str) -> str:
+async def generate_with_groq(prompt: str, processed_log: str, examples: str, additional_info: str) -> str:
     payload = {
         "model": "openai/gpt-oss-120b",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 1300,
+        "messages": [{"role": "system", "content": prompt}, 
+                     {"role": "user", "content": processed_log},
+                     {"role": "system", "content": examples},
+                     {"role": "user", "content": additional_info}],
+        "max_tokens": 3500,
     }
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(
@@ -140,11 +141,7 @@ async def generate_report(request: ReportRequest):
 
     processed_log = await process_chat_log(request.chat_log)
     additional_info = request.additional_info.strip() or "(nenhuma)"
-    prompt = REPORT_PROMPT.format(
-        chat_log=processed_log,
-        additional_info=additional_info,
-    )
-    report = await generate_with_groq(prompt)
+    report = await generate_with_groq(REPORT_PROMPT, processed_log, EXAMPLES, additional_info)
     return {"report": report}
 
 
