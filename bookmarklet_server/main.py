@@ -3,6 +3,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, dependencies
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://www.chatmix.com.br"],
+    allow_methods=["GET", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
 load_dotenv(override=True)
 PASSKEY = os.getenv("PASSKEY")
 CODE_SNIPPET = os.getenv("CODE_SNIPPET")
