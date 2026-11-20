@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, dependencies
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(override=True)
 PASSKEY = os.getenv("PASSKEY")
@@ -18,7 +19,7 @@ app.add_middleware(
 
 def auth(authorization: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
     if not authorization.credentials == PASSKEY:
-        raise HTTPException(status_code=401, detail="Não autorizado! Verifique se a chave da API está correta.")
+        raise HTTPException(status_code=401, detail=f"Não autorizado! Verifique se a chave da API está correta.")
 
 @app.get('/', dependencies=[Depends(auth)])
 def return_snippet():
