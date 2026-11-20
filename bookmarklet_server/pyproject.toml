@@ -1,0 +1,12 @@
+[project]
+name = "bookmarklet-server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "clebermaiadev", email = "cleberlucasdev@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]>=0.165.0",
+]
