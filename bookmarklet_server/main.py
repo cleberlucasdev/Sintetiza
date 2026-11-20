@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, dependencies
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-load_dotenv()
+load_dotenv(override=True)
 PASSKEY = os.getenv("PASSKEY")
 CODE_SNIPPET = os.getenv("CODE_SNIPPET")
 
