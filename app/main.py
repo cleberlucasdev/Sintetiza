@@ -123,7 +123,7 @@ async def generate_with_groq(prompt: str, processed_log: str, examples: str, add
                      {"role": "system", "content": examples},
                      {"role": "user", "content": additional_info}
                     ],
-        "max_tokens": 6500,
+        "max_tokens": 10000,
     }
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(
